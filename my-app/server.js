@@ -4,17 +4,26 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Path Setup
+const PUBLIC_DIR = path.join(__dirname, 'public');
 const DB_PATH = path.join(__dirname, 'data', 'database.json');
 
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
+
+// Serve Static Files from 'public' folder
+app.use(express.static(PUBLIC_DIR));
 
 // Helper: Safely Read JSON Data
 const readDB = () => {
   try {
     if (!fs.existsSync(DB_PATH)) {
+      const dir = path.dirname(DB_PATH);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
       const initialData = { items: [] };
       fs.writeFileSync(DB_PATH, JSON.stringify(initialData, null, 2));
       return initialData;
@@ -40,13 +49,13 @@ const writeDB = (data) => {
 
 // --- API ROUTES ---
 
-// 1. Get all items
+// Get all items
 app.get('/api/items', (req, res) => {
   const db = readDB();
   res.json({ success: true, data: db.items });
 });
 
-// 2. Add new item (Admin)
+// Add new item
 app.post('/api/items', (req, res) => {
   const { title, description } = req.body;
 
@@ -56,7 +65,7 @@ app.post('/api/items', (req, res) => {
 
   const db = readDB();
   const newItem = {
-    id: Date.now(), // Unique ID based on timestamp
+    id: Date.now(),
     title,
     description
   };
@@ -70,7 +79,7 @@ app.post('/api/items', (req, res) => {
   }
 });
 
-// 3. Delete item (Admin)
+// Delete item
 app.delete('/api/items/:id', (req, res) => {
   const id = parseInt(req.params.id);
   const db = readDB();
@@ -89,7 +98,12 @@ app.delete('/api/items/:id', (req, res) => {
   }
 });
 
+// --- FALLBACK ROUTE FOR INDEX.HTML ---
+app.get('*', (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
+});
+
 // Server Start
 app.listen(PORT, () => {
-  console.log(`Server is running at http://localhost:${PORT}`);
+  console.log(`Server is running at port ${PORT}`);
 });
